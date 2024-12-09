@@ -20,7 +20,8 @@ locals {
 }
 
 locals {
-  has_gpu = length(local.guest_accelerator) > 0
+  has_gpu                  = length(local.guest_accelerator) > 0
+  allocatable_gpu_per_node = local.has_gpu ? max(local.guest_accelerator[*].count...) : -1
   gpu_taint = local.has_gpu ? [{
     key    = "nvidia.com/gpu"
     value  = "present"
@@ -285,9 +286,14 @@ resource "google_container_node_pool" "node_pool" {
   }
 }
 
+locals {
+  supported_machine_types_for_install_dependencies = ["a3-highgpu-8g", "a3-megagpu-8g"]
+}
+
 resource "null_resource" "install_dependencies" {
+  count = contains(local.supported_machine_types_for_install_dependencies, var.machine_type) ? 1 : 0
   provisioner "local-exec" {
-    command = "pip3 install pyyaml argparse"
+    command = "pip3 install pyyaml"
   }
 }
 
